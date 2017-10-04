@@ -30,7 +30,7 @@ class GzipedArchive(tarball: String) {
   }
 
   def processEntry(entry: TarArchiveEntry): Unit = {
-    val name = entry.getName.stripSuffix(".json")
+    val name = RecordsBuffer.getEntryName(entry.getName)
     println("inside processEntry. Topic: " + name)
     Stream.continually {
       // Read n bytes
@@ -42,6 +42,7 @@ class GzipedArchive(tarball: String) {
       RecordsBuffer.extractAndSend(acc + RecordsBuffer.decode()(tuple._2), name)
     })
   }
+
 
 
 }
@@ -59,6 +60,15 @@ object RecordsBuffer {
     if (msgAmount != splits.size) splits(splits.size - 1)
     else ""
   }
+
+  def getEntryName(str: String) : String = {
+    val s = str.stripSuffix(".json")
+    if(!s.contains('/')) s
+    else {
+      s.substring(s.lastIndexOf('/') + 1, s.size)
+    }
+  }
+
   def countOccurance(line: String ) :Int = {
     var lastIndex = 0
     var count = 0
