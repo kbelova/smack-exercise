@@ -33,22 +33,24 @@ object model {
     }
   }
 
-  case class Checkin(busines_id: String, day: String, hour: String, amount: BigInt) extends Product {
-//    def apply(record: App.Record): ArrayBuffer[Checkin]
-  }
+  case class Checkin(checkin_id: String, busines_id: String, day: String, hour: String, amount: BigInt) extends Product
   object Checkin extends DModel {
     modelName = "checkin"
-    def apply(record: App.Record): mutable.HashSet[Checkin] = {
+    def apply(record: App.Record): mutable.ArrayBuffer[Checkin] = {
       implicit val formats = DefaultFormats
+
       val json = JsonMethods.parse(record.json).extract[Map[String, Any]]
       val businessId = json("business_id"). asInstanceOf[String]
       val days = json("time").asInstanceOf[Map[String, Map[String, BigInt]]]
-      val lst = new mutable.HashSet[Checkin]()
+      val lst = new mutable.ArrayBuffer[Checkin]()
+      println(" === checkin start ===")
       for ((day:String, hours: Map[String, BigInt] ) <- days) {
         for((hour: String, amount: BigInt) <- hours) {
-          lst += new Checkin(businessId, day, hour, amount)
+          println("hour: " + hour + "  amount: " + amount + " day: " + day )
+          lst += new Checkin(randomUUID().toString , businessId, day, hour, amount)
         }
       }
+      println("size checkin list: " + lst.size)
       lst
     }
     override def selectToTsv: String = "Select business_id, day, time, amount FROM checkin"
@@ -60,17 +62,26 @@ object model {
     def apply(record: App.Record): Review = {
       implicit val formats = DefaultFormats
       val json = JsonMethods.parse(record.json)
+      println("=== revieW apply ====" + json)
       json.extract[Review]
     }
   }
+  case class SmallTip(`text`: String, `date`: String, likes: BigInt, business_id: String, user_id: String) extends Product  {
+  }
 
-  case class Tip(`text`: String, `date`: String, likes: BigInt, business_id: String, user_id: String) extends Product
+  case class Tip(tip_id: String, `text`: String, `date`: String, likes: BigInt, business_id: String, user_id: String) extends Product {
+
+  }
   object Tip extends DModel {
     modelName = "tip"
+    def apply(`text`: String, `date`: String, likes: BigInt, business_id: String, user_id: String): Tip = new Tip(randomUUID().toString, `text`, `date`, likes, business_id, user_id)
     def apply(record: App.Record): Tip = {
       implicit val formats = DefaultFormats
       val json = JsonMethods.parse(record.json)
-      json.extract[Tip]
+      println("=== TIP apply ====" + json)
+      val tip = json.extract[SmallTip]
+      println("TIP DSL : " + tip)
+      Tip.apply(tip.`text`, tip.`date`,tip.likes, tip.business_id, tip.user_id)
     }
   }
 
@@ -79,34 +90,37 @@ object model {
 
   object User extends DModel {
     def apply(record: App.Record): User = {
+      println("== user apply ==")
       implicit val formats = DefaultFormats
       val json = JsonMethods.parse(record.json).extract[Map[String, Any]]
 //FIXME here automated needed
-      val userId = json.getOrElse("user_id",null).toString
-      val name = json.getOrElse("name", null).toString
-      val reviewCount = json.getOrElse("review_count",null).asInstanceOf[BigInt]
-      val yelpingSince = json.getOrElse("yelping_since", null).toString
+      val userId = json.getOrElse("user_id","").asInstanceOf[String]
+      val name = json.getOrElse("name", "").asInstanceOf[String]
+      val reviewCount = json.getOrElse("review_count",0).asInstanceOf[BigInt]
+      val yelpingSince = json.getOrElse("yelping_since", "").asInstanceOf[String]
       val friends = json("friends").asInstanceOf[List[String]].mkString(" ")
-      val useful = json.getOrElse("useful", null).asInstanceOf[BigInt]
-      val funny = json.getOrElse("funny", null).asInstanceOf[BigInt]
-      val cool = json.getOrElse("cool", null).asInstanceOf[BigInt]
-      val fans = json.getOrElse("fans", null).asInstanceOf[BigInt]
-      val averageStars = json.getOrElse("average_stars", null).asInstanceOf[Double]
+      val useful = json.getOrElse("useful", 0).asInstanceOf[BigInt]
+      val funny = json.getOrElse("funny", 0).asInstanceOf[BigInt]
+      val cool = json.getOrElse("cool", 0).asInstanceOf[BigInt]
+      val fans = json.getOrElse("fans", 0).asInstanceOf[BigInt]
+      val averageStars = json.getOrElse("average_stars", 0.0).asInstanceOf[Double]
       val elite = json("elite").asInstanceOf[List[BigInt]].mkString(" ")
-      val complimentHot = json.getOrElse("compliment_hot", null).asInstanceOf[BigInt]
-      val complimentMore = json.getOrElse("compliment_more", null).asInstanceOf[BigInt]
-      val complimentProfile = json.getOrElse("compliment_profile", null).asInstanceOf[BigInt]
-      val complimentCute = json.getOrElse("compliment_cute", null).asInstanceOf[BigInt]
-      val complimentList = json.getOrElse("compliment_list", null).asInstanceOf[BigInt]
-      val compliment_note = json.getOrElse("compliment_note", null).asInstanceOf[BigInt]
-      val compliment_plain = json.getOrElse("compliment_plain", null).asInstanceOf[BigInt]
-      val compliment_cool = json.getOrElse("compliment_cool", null).asInstanceOf[BigInt]
-      val compliment_funny = json.getOrElse("compliment_funny", null).asInstanceOf[BigInt]
-      val compliment_writer = json.getOrElse("compliment_writer", null).asInstanceOf[BigInt]
-      val compliment_photos = json.get("compliment_photos").orNull
+      val complimentHot = json.getOrElse("compliment_hot", 0).asInstanceOf[BigInt]
+      val complimentMore = json.getOrElse("compliment_more", 0).asInstanceOf[BigInt]
+      val complimentProfile = json.getOrElse("compliment_profile", 0).asInstanceOf[BigInt]
+      val complimentCute = json.getOrElse("compliment_cute", 0).asInstanceOf[BigInt]
+      val complimentList = json.getOrElse("compliment_list", 0).asInstanceOf[BigInt]
+      val compliment_note = json.getOrElse("compliment_note", 0).asInstanceOf[BigInt]
+      val compliment_plain = json.getOrElse("compliment_plain", 0).asInstanceOf[BigInt]
+      val compliment_cool = json.getOrElse("compliment_cool", 0).asInstanceOf[BigInt]
+      val compliment_funny = json.getOrElse("compliment_funny", 0).asInstanceOf[BigInt]
+      val compliment_writer = json.getOrElse("compliment_writer", 0).asInstanceOf[BigInt]
+      val compliment_photos = json.getOrElse("compliment_photos",0).asInstanceOf[BigInt]
 
 
-      new User(userId, name, reviewCount, yelpingSince, friends, useful, funny, cool, fans, elite,averageStars, complimentHot, complimentMore, complimentProfile, complimentCute, complimentList, compliment_note, compliment_plain, compliment_cool, compliment_funny, compliment_writer, compliment_photos.asInstanceOf[BigInt])
+      val u = new User(userId, name, reviewCount, yelpingSince, friends, useful, funny, cool, fans, elite,averageStars, complimentHot, complimentMore, complimentProfile, complimentCute, complimentList, compliment_note, compliment_plain, compliment_cool, compliment_funny, compliment_writer, compliment_photos)
+      println("  user object: " + u.toString)
+      u
     }
     modelName = "user"
     override def selectToTsv = "SELECT user_id, name, review_count, yelping_since, stringify(friends), useful, funny, cool, fans, stringify(elite), average_stars, compliment_hot,compliment_more, compliment_profile, compliment_cute, compliment_list, compliment_note, compliment_plain, compliment_cool, compliment_funny, compliment_writer, compliment_photos FROM user"
@@ -151,10 +165,9 @@ object model {
           StructField("Thursday", StringType, true),
           StructField("Tuesday", StringType, true),
           StructField("Wednesday", StringType, true))), true)))
-
-
-
-
+    def apply(business_id: String, name: String, neighborhood: String, address: String, city: String, state: String, postal_code: String, latitude: Double, longitude: Double, stars: Double, review_count: BigInt, is_open: BigInt, categories: List[String]): Business = {
+      new Business(business_id, name, neighborhood, address, city, state, postal_code, latitude, longitude, stars, review_count, is_open, categories.mkString(" "))
+    }
     def apply(record: App.Record): Business = {
       implicit val formats = DefaultFormats
       val json = JsonMethods.parse(record.json)
@@ -166,6 +179,7 @@ object model {
   case class Photos(photo_id: String, business_id: String, caption: String, label: String) extends Product
   object Photos extends DModel {
     def apply(record: App.Record): Photos = {
+      println(" PHOTOS apply")
       implicit val formats: DefaultFormats.type = DefaultFormats
       val json = JsonMethods.parse(record.json)
       json.extract[Photos]
