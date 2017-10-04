@@ -47,12 +47,12 @@ class GzipedArchive(tarball: String) {
 
 }
 object RecordsBuffer {
-  val endRecord = "}\n"
+  val ending = "}\n"
   def decode(charset: Charset = StandardCharsets.UTF_8)(bytes: Array[Byte]) = new String(bytes, StandardCharsets.UTF_8)
   def extractAndSend(line: String, modelName: String): String = {
     val msgAmount = countOccurance(line)
     if (msgAmount == 0 ) return line //no complete records in buffer
-    val splits = line.split(endRecord)
+    val splits = line.split(ending)
     (0 to(msgAmount - 1, 1))
       .foreach(i => {
         RecordsQueue.put(s"$modelName:${splits(i).concat("}")}\\n")
@@ -73,10 +73,10 @@ object RecordsBuffer {
     var lastIndex = 0
     var count = 0
     while(lastIndex != -1){
-      lastIndex = line.indexOf(endRecord, lastIndex)
+      lastIndex = line.indexOf(ending, lastIndex)
       if(lastIndex != -1){
         count+=1
-        lastIndex += endRecord.length()
+        lastIndex += ending.length()
       }
     }
     count
