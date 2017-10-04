@@ -31,10 +31,15 @@ object App {
   def createCassandraSchema(spark: SparkSession) : Boolean = {
     import spark.implicits._
     import com.datastax.spark.connector._
-    ContextKeeper.cc.withSessionDo { session =>
-      Array("business", "photos", "review", "tip", "user", "checkin").foreach( f => {
+    ContextKeeper.cc.withSessionDo { session => {
+      session.execute("CREATE KEYSPACE IF NOT EXISTS test WITH replication = {"
+        + " 'class': 'SimpleStrategy', "
+        + " 'replication_factor': '1' "
+        + "};" );
+      Array("business", "photos", "review", "tip", "user", "checkin").foreach(f => {
         session.execute(s"DROP TABLE IF EXISTS test.$f")
       })
+    }
     }
     spark.emptyDataset[Photos].toDF.createCassandraTable("test", "photos")
     spark.emptyDataset[User].toDF.createCassandraTable("test", "user")
@@ -60,38 +65,40 @@ object App {
         val rdd = tuple.map(t => {
           val modelName = t.substring(0, t.indexOf(":")).trim()
           val jsonStr = t.substring(t.indexOf(":") + 1, t.length).trim()
-          println("modelName: " + modelName +  "  " + "jsonStr: " + jsonStr )
+          println("modelName: " + modelName +  "  " + " jsonStr: " + jsonStr )
           Record(modelName, jsonStr)
         })
 
         val photos = rdd.filter(r => {
-          println("modelName: " + r.modelName +  "  " + "json: " + r.json )
+          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
           r.modelName == "photos"
         }).map[Photos](p => Photos.apply(p)).saveToCassandra("test", "photos")
 
-        val business = rdd.filter(r => {
-          r.modelName == "business"
-        }).map[Business](b => Business.apply(b))
-
-//          .saveToCassandra("test", "business")
+//        val business = rdd.filter(r => {
+//          r.modelName == "business"
+//        }).map[Business](b => Business.apply(b)).saveToCassandra("test", "business")
 
 
         val user = rdd.filter(r => {
-          println("modelName: " + r.modelName +  "  " + "json: " + r.json )
+          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
           r.modelName == "user"
         }).map[User](u => User.apply(u)).saveToCassandra("test", "user")
 
         val review = rdd.filter(r => {
+          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
           r.modelName == "review"
         }).map[Review](r => Review.apply(r)).saveToCassandra("test", "review")
 
         val tip = rdd.filter(r => {
+          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
           r.modelName == "tip"
         }).map[Tip](r => Tip.apply(r)).saveToCassandra("test", "tip")
 
         val checkin = rdd.filter(r => {
+          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
           r.modelName == "checkin"
-        }).flatMap[Checkin](r => Checkin.apply(r)).saveToCassandra("test", "checkin")
+        }).flatMap[Checkin](r => Checkin.apply(r))
+          checkin.saveToCassandra("test", "checkin")
 
       })
     streaming.start()

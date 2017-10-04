@@ -176,7 +176,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>smack-exercise.App.scala</mainClass>
+              <mainClass>App.scala</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>
