@@ -1,11 +1,7 @@
-# smack-exercise
+# smack-exercise [![Build Status](https://travis-ci.org/kbelova/smack-exercise.svg?branch=master)](https://travis-ci.org/kbelova/smack-exercise)
 
 
-## How to run
-without Docker
-1. git clone
-2. mvn clean package
-3. mvn assembly:assembly // to get fat jar
-4. SPARK_HOME/bin/spark-submit --conf spark.cassandra.connection.host=cassandra -class App ./target/smacktest-1.0-SNAPSHOT-jar-with-dependencies.jar /path_to_input.tar.gz
-
-with docker
+## How to run with Docker
+2. create directory `./data` and put your *.tar.gz inside
+3. edit PATH inside docker-compose.yml point it to *.tar.gz, by default it's expecting: /data/yelp_dataset.tar.gz
+4. sudo docker-compose up -d //starting  cassandra and app with spark
