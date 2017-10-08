@@ -8,16 +8,13 @@ import java.nio.charset._
 
 import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 
-
 class GzipedArchive(tarball: String) {
   val config = ConfigFactory.load()
   var tar: TarArchiveInputStream = init()
   var bufferSize: Int = 1024
 
   def init(): TarArchiveInputStream =  {
-    println("init gziped")
     val in: io.InputStream = new FileInputStream(tarball)
-    println("tarbal: " + tarball)
     new TarArchiveInputStream(new GzipCompressorInputStream(in))
   } //TODO check open in and close it? (TRY)
 

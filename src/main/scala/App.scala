@@ -1,5 +1,6 @@
 import com.typesafe.config._
 import model._
+import model.SourceEnum._
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming._
@@ -10,108 +11,90 @@ import com.datastax.spark.connector.writer.WriteConf
 import org.apache.spark.sql.cassandra._
 
 /**
-  * @author ${user.name}
+  * @author ekaterina.belova
   */
 object App {
   val appConfig = ConfigFactory.load()
   var path = ""
+  /**thread with message queue, sending lines from archive to our localhost:port
+  on which spark stream is listening*/
   val dataSocketSender = new Thread(DataSender)
+
+  /**separate thread where we uncompress tar.gz and pass lines from it into message queue
+  since uncompress can't be done parallel I considered to take it into a separate flow
+  otherwise we have to wait until uncompress is done.*/
   val unCompresser = new Thread(new Runnable {
     override def run(): Unit = {
       new GzipedArchive(path).processArchive
     }
   })
+
   object ContextKeeper {
-    val sparkConfig = new SparkConf().setMaster(appConfig.getString("spark.master")).setAppName(appConfig.getString("spark.appname"))
-    val ssc  = new StreamingContext(sparkConfig, Seconds(appConfig.getInt("spark.streaming.batch_duration")))
-    val cc =  CassandraConnector(sparkConfig)
-  }
-
-
-  def createCassandraSchema(spark: SparkSession) : Boolean = {
-    import spark.implicits._
-    import com.datastax.spark.connector._
-    ContextKeeper.cc.withSessionDo { session => {
-      session.execute("CREATE KEYSPACE IF NOT EXISTS test WITH replication = {"
-        + " 'class': 'SimpleStrategy', "
-        + " 'replication_factor': '1' "
-        + "};" );
-      Array("business", "photos", "review", "tip", "user", "checkin").foreach(f => {
-        session.execute(s"DROP TABLE IF EXISTS test.$f")
-      })
-    }
-    }
-    spark.emptyDataset[Photos].toDF.createCassandraTable("test", "photos")
-    spark.emptyDataset[User].toDF.createCassandraTable("test", "user")
-    spark.emptyDataset[Business].toDF.createCassandraTable("test", "business")
-    spark.emptyDataset[Checkin].toDF.createCassandraTable("test", "checkin")
-    spark.emptyDataset[Review].toDF.createCassandraTable("test", "review")
-    spark.emptyDataset[Tip].toDF.createCassandraTable("test", "tip")
-    false
+    val sparkConfig: SparkConf = new SparkConf()
+                                      .setMaster(appConfig.getString("spark.master"))
+                                      .setAppName(appConfig.getString("spark.appname"))
+    val ssc: StreamingContext = new StreamingContext(sparkConfig, Seconds(appConfig.getInt("spark.streaming.batch_duration")))
+    val cassandra = CassandraHelper.getInstance(sparkConfig)
   }
 
   def main(args : Array[String]) {
-    var rewriteSchema = true
-    import ContextKeeper._
     path = args(0)
     if (path == null || path.isEmpty) throw new RuntimeException ("Path to a tar.gz is null or empty")
 
-    val streaming = ssc.socketTextStream(appConfig.getString("spark.streaming.server"), appConfig.getInt("spark.streaming.port"))
-      streaming.foreachRDD((tuple: RDD[String]) => {
-        val spark =  SparkSessionSingleton.getInstance(tuple.sparkContext.getConf)
-        import spark.implicits._
+    import ContextKeeper._
+    //as a first step we check if there is a need to update schema in cassandra
+    //can be false in case if we don't want to lost data keeped in tables from previous runs
 
-        if(rewriteSchema) rewriteSchema = createCassandraSchema(spark)
-        val rdd = tuple.map(t => {
-          val modelName = t.substring(0, t.indexOf(":")).trim()
-          val jsonStr = t.substring(t.indexOf(":") + 1, t.length).trim()
-          println("modelName: " + modelName +  "  " + " jsonStr: " + jsonStr )
-          Record(modelName, jsonStr)
-        })
+    //update cassandra schema if needed
+    CassandraHelper.checkSchemaUpdate
+    println("CASSANDRA SCHEMA UPDATE IS FINISHED")
 
-        val photos = rdd.filter(r => {
-          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
-          r.modelName == "photos"
-        }).map[Photos](p => Photos.apply(p)).saveToCassandra("test", "photos")
+    // create stream from host:port on which our message queue sends lines from .tar.gz
+    val streaming = ssc.socketTextStream( appConfig.getString("spark.streaming.server"),
+                                          appConfig.getInt("spark.streaming.port"))
+    streaming.foreachRDD((line: RDD[String]) => {
+      val rdd = line.map(l => Record(l))
+      val spark =  SparkSessionSingleton.getInstance(ssc.sparkContext.getConf)
+      import spark.implicits._
+      import com.datastax.spark.connector._
 
-//        val business = rdd.filter(r => {
-//          r.modelName == "business"
-//        }).map[Business](b => Business.apply(b)).saveToCassandra("test", "business")
+      rdd.filter(r => r.isMatch(PHOTOS.name))
+            .map[Photos](p => Photos.apply(p))
+            .saveToCassandra(CassandraHelper.keyspace, PHOTOS.name)
 
+        rdd.filter(r => r.isMatch(USER.name))
+          .map[User](u => User.apply(u))
+          .saveToCassandra(CassandraHelper.keyspace, USER.name)
 
-        val user = rdd.filter(r => {
-          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
-          r.modelName == "user"
-        }).map[User](u => User.apply(u)).saveToCassandra("test", "user")
+        rdd.filter(r => r.isMatch(REVIEW.name))
+          .map[Review](r => Review.apply(r))
+          .saveToCassandra(CassandraHelper.keyspace, REVIEW.name)
 
-        val review = rdd.filter(r => {
-          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
-          r.modelName == "review"
-        }).map[Review](r => Review.apply(r)).saveToCassandra("test", "review")
+        rdd.filter(r => r.isMatch(TIP.name))
+          .map[Tip](r => Tip.apply(r))
+          .saveToCassandra(CassandraHelper.keyspace, TIP.name)
 
-        val tip = rdd.filter(r => {
-          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
-          r.modelName == "tip"
-        }).map[Tip](r => Tip.apply(r)).saveToCassandra("test", "tip")
+        rdd.filter(r => {r.isMatch(CHECKIN.name)})
+          .flatMap[Checkin](r => Checkin.apply(r))
+          .saveToCassandra(CassandraHelper.keyspace, CHECKIN.name)
 
-        val checkin = rdd.filter(r => {
-          println("modelName: " + r.modelName +  "  " + " json: " + r.json )
-          r.modelName == "checkin"
-        }).flatMap[Checkin](r => Checkin.apply(r))
-          checkin.saveToCassandra("test", "checkin")
-
+        rdd.filter(r => {r.isMatch( BUSINESS.name)})
+          .map[Business](b => Business.apply(b))
+          .saveToCassandra(CassandraHelper.keyspace, BUSINESS.name)
       })
-    streaming.start()
+
     dataSocketSender.start()
     ssc.start()
     unCompresser.start()
+    /**
+      * Blocks main tread until threads've been joined, are not finished.
+      * Spark has it out of the box.
+      * */
     dataSocketSender.join()
     unCompresser.join()
     println("WE ARE DONE")
-    ContextKeeper.ssc.stop(true, true)
+    ssc.stop(true, true)
   }
-
-case class Record(modelName: String, json: String)
 
   /** Lazily instantiated singleton instance of SparkSession */
   object SparkSessionSingleton {

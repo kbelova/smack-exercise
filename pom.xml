@@ -77,6 +77,12 @@
       <artifactId>json4s-jackson_${scala.tools.version}</artifactId>
       <version>3.2.11</version>
     </dependency>
+    <dependency>
+      <!--com.beachape" %% "enumeratum" % enumeratumVersion-->
+      <groupId>com.beachape</groupId>
+      <artifactId>enumeratum_${scala.tools.version}</artifactId>
+      <version>1.5.12</version>
+    </dependency>
     <!-- Test -->
        <dependency>
       <groupId>junit</groupId>
