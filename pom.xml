@@ -182,7 +182,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>App.scala</mainClass>
+              <mainClass>smackexercise/App.scala</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>

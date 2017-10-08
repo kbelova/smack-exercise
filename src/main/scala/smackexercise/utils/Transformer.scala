@@ -1,4 +1,5 @@
-package smackexercise.utils {
+package smackexercise.utils
+
   import scala.collection.mutable
 
   object Transformer {
@@ -23,4 +24,3 @@ package smackexercise.utils {
         key.toLowerCase()
     }
   }
-}

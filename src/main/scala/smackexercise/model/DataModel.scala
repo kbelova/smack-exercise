@@ -1,4 +1,4 @@
-package model
+package smackexercise.model
 
 import java.util.UUID.randomUUID
 

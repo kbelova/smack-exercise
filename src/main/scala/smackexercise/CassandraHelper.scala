@@ -1,10 +1,9 @@
-import App.ContextKeeper.sparkConfig
-import com.typesafe.config.ConfigFactory
-import model.SourceEnum
-import org.apache.spark.SparkConf
+package smackexercise
+
 import com.datastax.spark.connector.cql.CassandraConnector
-import com.datastax.spark.connector.writer.WriteConf
-import org.apache.spark.sql.cassandra._
+import com.typesafe.config.ConfigFactory
+import org.apache.spark.SparkConf
+import smackexercise.model.SourceEnum
 
 object CassandraHelper {
   private val appConfig = ConfigFactory.load()
@@ -23,16 +22,14 @@ object CassandraHelper {
     }
     cc
   }
-  def checkSchemaUpdate = {
+  def checkSchemaUpdate(sparkConf: SparkConf) = {
     if (updateSchema) {
-      updateSchema = createSchema(keyspace, strategy, replicaFactor)
+      updateSchema = createSchema(keyspace, strategy, replicaFactor, sparkConf)
     }
   }
 
-  private def createSchema(keyspace: String, strategy: String, replica_factor: String): Boolean = {
-      import com.datastax.spark.connector._
-
-      getInstance(sparkConfig).withSessionDo { session => {
+  private def createSchema(keyspace: String, strategy: String, replica_factor: String, sparkConf: SparkConf): Boolean = {
+      getInstance(sparkConf).withSessionDo { session => {
         session.execute(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH replication = {"
           + s" 'class': '${strategy}', "
           + s" 'replication_factor': '${replica_factor}' "
