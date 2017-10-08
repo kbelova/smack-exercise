@@ -7,7 +7,7 @@ services:
         build:
             context: .
             args:
-                PATH: input.tar.gz
+                PATH: yelp_dataset.tar.gz
         volumes:
             - ./data:/data/parse
         depends_on: 
