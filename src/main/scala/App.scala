@@ -25,7 +25,7 @@ object App {
   otherwise we have to wait until uncompress is done.*/
   val unCompresser = new Thread(new Runnable {
     override def run(): Unit = {
-      new GzipedArchive(path).processArchive
+      new ArchiveHelper(path).processArchive
     }
   })
 

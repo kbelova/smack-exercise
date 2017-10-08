@@ -1,7 +1,7 @@
 import org.apache.spark.sql.catalyst.expressions.AssertTrue
 import org.junit.Test
 
-class GzipedArchiveTest extends UnitTestSuit{
+class ArchiveHelperTest extends UnitTestSuit{
 
   @Test
   def getEntryNameTest(): Unit = {

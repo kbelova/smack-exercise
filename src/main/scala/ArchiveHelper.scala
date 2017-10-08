@@ -8,7 +8,7 @@ import java.nio.charset._
 
 import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 
-class GzipedArchive(tarball: String) {
+class ArchiveHelper(tarball: String) {
   val config = ConfigFactory.load()
   var tar: TarArchiveInputStream = init()
   var bufferSize: Int = 1024
@@ -28,7 +28,6 @@ class GzipedArchive(tarball: String) {
 
   def processEntry(entry: TarArchiveEntry): Unit = {
     val name = RecordsBuffer.getEntryName(entry.getName)
-    println("inside processEntry. Topic: " + name)
     Stream.continually {
       // Read n bytes
       val buffer = Array.fill[Byte](bufferSize)(-1)
@@ -39,21 +38,23 @@ class GzipedArchive(tarball: String) {
       RecordsBuffer.extractAndSend(acc + RecordsBuffer.decode()(tuple._2), name)
     })
   }
-
-
-
 }
+
 object RecordsBuffer {
   val ending = "}\n"
+
   def decode(charset: Charset = StandardCharsets.UTF_8)(bytes: Array[Byte]) = new String(bytes, StandardCharsets.UTF_8)
+
   def extractAndSend(line: String, modelName: String): String = {
     val msgAmount = countOccurance(line)
+
     if (msgAmount == 0 ) return line //no complete records in buffer
+
     val splits = line.split(ending)
-    (0 to(msgAmount - 1, 1))
-      .foreach(i => {
+    (0 to(msgAmount - 1, 1)).foreach(i => {
         RecordsQueue.put(s"$modelName:${splits(i).concat("}")}\\n")
       })
+
     if (msgAmount != splits.size) splits(splits.size - 1)
     else ""
   }
