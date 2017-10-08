@@ -7,7 +7,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.streaming._
 import smackexercise.model.SourceEnum._
 import smackexercise.model._
-import uncompress.{ArchiveHelper, DataSender}
+import smackexercise.uncompress.{ArchiveHelper, DataSender}
 
 
 /**

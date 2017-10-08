@@ -20,4 +20,4 @@ RUN mvn clean package && mvn assembly:assembly
 
 ARG PATH
 
-ENTRYPOINT ["${SPARK_HOME}/bin/spark-submit",  "--conf spark.cassandra.connection.host=cassandra", "-class", "App", "./target/smacktest-1.0-SNAPSHOT-jar-with-dependencies.jar", "/data/parse/${PATH}"]
+ENTRYPOINT "${SPARK_HOME}/bin/spark-submit --conf spark.cassandra.connection.host=cassandra --class \"smackexercise.App\" ./target/smacktest-1.0-SNAPSHOT-jar-with-dependencies.jar /data/parse/${PATH}"
