@@ -18,6 +18,6 @@ COPY src ./src
 COPY pom.xml .
 RUN mvn clean package && mvn assembly:assembly
 
-ARG PATH
+ARG TAR_PATH
 
-ENTRYPOINT "${SPARK_HOME}/bin/spark-submit --conf spark.cassandra.connection.host=cassandra --class \"smackexercise.App\" ./target/smacktest-1.0-SNAPSHOT-jar-with-dependencies.jar /data/parse/${PATH}"
+CMD ${SPARK_HOME}/bin/spark-submit --class "smackexercise.App" ./target/smack-exercise-1.0-SNAPSHOT-jar-with-dependencies.jar /data/parse/${TAR_PATH}

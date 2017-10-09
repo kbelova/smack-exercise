@@ -29,6 +29,8 @@ object CassandraHelper {
   }
 
   private def createSchema(keyspace: String, strategy: String, replica_factor: String, sparkConf: SparkConf): Boolean = {
+
+
       getInstance(sparkConf).withSessionDo { session => {
         session.execute(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH replication = {"
           + s" 'class': '${strategy}', "

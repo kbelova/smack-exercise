@@ -31,8 +31,13 @@ object App {
 
   object ContextKeeper {
     val sparkConfig: SparkConf = new SparkConf()
-                                      .setMaster(appConfig.getString("spark.master"))
-                                      .setAppName(appConfig.getString("spark.appname"))
+      .setMaster(appConfig.getString("spark.master"))
+      .setAppName(appConfig.getString("spark.appname"))
+      .set("spark.cassandra.connection.host", appConfig.getString("cassandra.host"))
+      .set("spark.cassandra.connection.port", appConfig.getString("cassandra.port"))
+      .set("spark.cassandra.auth.username", appConfig.getString("cassandra.username"))
+      .set("spark.cassandra.auth.password", appConfig.getString("cassandra.password"))
+
     val ssc: StreamingContext = new StreamingContext(sparkConfig, Seconds(appConfig.getInt("spark.streaming.batch_duration")))
     val cassandra = CassandraHelper.getInstance(sparkConfig)
   }
