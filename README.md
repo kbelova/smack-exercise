@@ -2,7 +2,8 @@
 
 It's an example application  reading JSON tar.gz data with Spark, process, and publish to Cassandra in tabular view, nearly without IO FileSystem operation and network overhead. Components of Smack being used: spark, cassandra. Added Travis CI support and Docker container.
 
-## How to run with Docker
+## How to run
+### Docker
 0. Cassandra service should be up and running, versions: 2.1.5*, 2.2 or 3.0, before application execution;
 1. Update file `./src/main/resources/application.conf`
 ```
@@ -13,8 +14,17 @@ cassandra {
   password=""
 ```
 2. Create directory `./data` and put your yelp_dataset.tar.gz inside;
-2. Edit TAR_PATH inside Dockerfile point it to {your_name}.tar.gz, by default, it's expecting: `yelp_dataset.tar.gz`;
-3. Build and run docker image.
+3. Edit TAR_PATH inside Dockerfile point it to {json_to_parse}.tar.gz, by default, it's expecting: `yelp_dataset.tar.gz`;
+4. Build and run docker image.
+
+### Locally
+0. cassandra should be up and running
+1. mvn clean assembly:assembly
+2. execute
+```bash
+${SPARK_HOME}/bin/spark-submit --class "smackexercise.App" ./target/smack-exercise-1.0-SNAPSHOT-jar-with-dependencies.jar /data/json_to_parse.tar.gz
+
+```
 
 ## Execution time and monitoring
 It took about 20min for application to run on Intel core i7 with 16GB RAM in local[*] mode (spark uses 8 processes) and local cassandra cluster.
