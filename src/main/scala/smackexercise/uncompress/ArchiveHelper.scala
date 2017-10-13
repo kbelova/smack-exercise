@@ -46,17 +46,21 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
     def decode(charset: Charset = StandardCharsets.UTF_8)(bytes: Array[Byte]) = new String(bytes, StandardCharsets.UTF_8)
 
     def extractAndSend(line: String, modelName: String): String = {
-      val msgAmount = countOccurance(line)
+      val msgAmount = countOccurrence(line)
 
       if (msgAmount == 0) return line //no complete records in buffer
 
       val splits = line.split(ending)
       (0 to(msgAmount - 1, 1)).foreach(i => {
-        RecordsQueue.put(s"$modelName:${splits(i).concat("}")}\\n")
+        RecordsQueue.put(buildMsg(modelName, splits(i)))
       })
 
       if (msgAmount != splits.size) splits(splits.size - 1)
       else ""
+    }
+
+    def buildMsg(modelName: String, line: String): String = {
+      s"$modelName:${line.concat("}")}\\n"
     }
 
     def getEntryName(str: String): String = {
@@ -67,7 +71,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
       }
     }
 
-    def countOccurance(line: String): Int = {
+    def countOccurrence(line: String): Int = {
       var lastIndex = 0
       var count = 0
       while (lastIndex != -1) {

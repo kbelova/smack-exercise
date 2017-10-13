@@ -15,13 +15,10 @@ import com.typesafe.config.ConfigFactory
     override def run(): Unit = {
       while (continueRun) {
         val s = server.accept()
-        //      println("connected")
         val out = new PrintStream(s.getOutputStream())
         try {
           while (continueRun) {
             val msg = RecordsQueue.queue.poll(1, TimeUnit.SECONDS)
-            //          println(RecordsQueue.toString)
-            //          println(msg)
             if (msg != null) {
               out.println(msg)
             } else {
