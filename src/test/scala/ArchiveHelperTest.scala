@@ -1,6 +1,6 @@
-import org.apache.spark.sql.catalyst.expressions.AssertTrue
 import org.junit.Test
 import smackexercise.uncompress.RecordsBuffer
+
 class ArchiveHelperTest extends UnitTestSuit{
 
   @Test

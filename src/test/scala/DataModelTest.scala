@@ -3,7 +3,7 @@ import org.junit.Test
 import smackexercise.model._
 import smackexercise.model.SourceEnum._
 
-class DataModelTests extends UnitTestSuit {
+class DataModelTest extends UnitTestSuit {
   final private val business1 = "business1"
   final private val business2 = "business2"
   final private val photo1 = "photo1"
@@ -26,7 +26,7 @@ class DataModelTests extends UnitTestSuit {
   def path2json(modelName: String): String = s"/input/json/${modelName}.json"
 
   @Test
-  def modelPhotosTest{
+  def modelPhotosTest: Unit =  {
     val sparkTestLocal = spark
     import sparkTestLocal.implicits._
 
@@ -50,7 +50,7 @@ class DataModelTests extends UnitTestSuit {
   )
 
   @Test
-  def modelBusinessTest {
+  def modelBusinessTest: Unit =  {
     val sparkTestLocal = spark
     import sparkTestLocal.implicits._
     val jsonFileName = path2json(BUSINESS.name)
@@ -64,7 +64,7 @@ class DataModelTests extends UnitTestSuit {
     new Business(business_id = business1, name = "name1", neighborhood = "nei1", address = address1, city = "city1", state = "st", postal_code = postalCode, latitude = 43.0, longitude = -89.3, stars = stars, review_count = 5, is_open = 1, businessacceptscreditcards = false, restaurantspricerange2 = 1, wifi = "free", `businessparking_garage` = false, `businessparking_street` = false, `businessparking_validated` = false, `businessparking_lot` = true, `businessparking_valet` = false, bikeparking = true, categories = "cat1,cat2", monday = "monday", tuesday = "tuesday", wednesday = "wednesday", thursday = "thursday", friday = "friday", saturday = "saturday", sunday = "sunday")
 
   @Test
-  def modelCheckinTest {
+  def modelCheckinTest: Unit = {
     val sparkTestLocal = spark
     import sparkTestLocal.implicits._
     val jsonFileName = path2json(CHECKIN.name)
@@ -80,7 +80,7 @@ class DataModelTests extends UnitTestSuit {
   }
 
   @Test
-  def modelReviewTest {
+  def modelReviewTest: Unit =  {
     val sparkTestLocal = spark
     import sparkTestLocal.implicits._
     val jsonFileName = path2json(REVIEW.name)
@@ -99,7 +99,7 @@ class DataModelTests extends UnitTestSuit {
   )
 
   @Test
-  def modelSmallTipTest {
+  def modelSmallTipTest: Unit =  {
     val sparkTestLocal = spark
     import sparkTestLocal.implicits._
     val jsonFileName = path2json(TIP.name)
@@ -117,7 +117,7 @@ class DataModelTests extends UnitTestSuit {
   }
 
   @Test
-  def modelUserTest {
+  def modelUserTest: Unit =  {
     val sparkTestLocal = spark
     import sparkTestLocal.implicits._
     val jsonFileName = path2json(USER.name)
