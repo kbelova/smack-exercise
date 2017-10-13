@@ -5,8 +5,8 @@ import org.junit._
 import org.scalatest.junit.AssertionsForJUnit
 
 class UnitTestSuit extends AssertionsForJUnit {
-  var spark: SparkSession = _
   val conf = ConfigFactory.load()
+  var spark: SparkSession = _
   var ssc: StreamingContext = _
 
   @Before

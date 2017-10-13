@@ -1,5 +1,6 @@
 package smackexercise
 
+import com.datastax.spark.connector.cql.CassandraConnector
 import com.typesafe.config._
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
@@ -14,7 +15,7 @@ import smackexercise.uncompress.{ArchiveHelper, DataSender}
   * @author ekaterina.belova
   */
 object App {
-  val appConfig = ConfigFactory.load()
+  val appConfig: Config = ConfigFactory.load()
   var path = ""
   /**thread with message queue, sending lines from archive to our localhost:port
   on which spark stream is listening*/
@@ -39,7 +40,7 @@ object App {
       .set("spark.cassandra.auth.password", appConfig.getString("cassandra.password"))
 
     val ssc: StreamingContext = new StreamingContext(sparkConfig, Seconds(appConfig.getInt("spark.streaming.batch_duration")))
-    val cassandra = CassandraHelper.getInstance(sparkConfig)
+    val cassandra: CassandraConnector = CassandraHelper.getInstance(sparkConfig)
   }
 
   def main(args : Array[String]) {
@@ -56,35 +57,41 @@ object App {
     // create stream from host:port on which our message queue sends lines from .tar.gz
     val streaming = ssc.socketTextStream( appConfig.getString("spark.streaming.server"),
                                           appConfig.getInt("spark.streaming.port"))
-    streaming.foreachRDD((line: RDD[String]) => {
-      val rdd = line.map(l => Record(l))
-      val spark =  SparkSessionSingleton.getInstance(ssc.sparkContext.getConf)
+
+    streaming.foreachRDD(foreachFunc = (line: RDD[String]) => {
+      val rdd: RDD[Record] = line.map(l => Record(l))
+      val spark = SparkSessionSingleton.getInstance(ssc.sparkContext.getConf)
+      import spark.implicits
       import com.datastax.spark.connector._
 
       rdd.filter(r => r.isMatch(PHOTOS.name))
-            .map[Photos](p => Photos.apply(p))
-            .saveToCassandra(CassandraHelper.keyspace, PHOTOS.name)
+        .map[Photos](p => Photos.apply(p))
+        .saveToCassandra(CassandraHelper.keyspace, PHOTOS.name)
 
-        rdd.filter(r => r.isMatch(USER.name))
-          .map[User](u => User.apply(u))
-          .saveToCassandra(CassandraHelper.keyspace, USER.name)
+      rdd.filter(r => r.isMatch(USER.name))
+        .map[User](u => User.apply(u))
+        .saveToCassandra(CassandraHelper.keyspace, USER.name)
 
-        rdd.filter(r => r.isMatch(REVIEW.name))
-          .map[Review](r => Review.apply(r))
-          .saveToCassandra(CassandraHelper.keyspace, REVIEW.name)
+      rdd.filter(r => r.isMatch(REVIEW.name))
+        .map[Review](r => Review.apply(r))
+        .saveToCassandra(CassandraHelper.keyspace, REVIEW.name)
 
-        rdd.filter(r => r.isMatch(TIP.name))
-          .map[Tip](r => Tip.apply(r))
-          .saveToCassandra(CassandraHelper.keyspace, TIP.name)
+      rdd.filter(r => r.isMatch(TIP.name))
+        .map[Tip](r => Tip.apply(r))
+        .saveToCassandra(CassandraHelper.keyspace, TIP.name)
 
-        rdd.filter(r => {r.isMatch(CHECKIN.name)})
-          .flatMap[Checkin](r => Checkin.apply(r))
-          .saveToCassandra(CassandraHelper.keyspace, CHECKIN.name)
-
-        rdd.filter(r => {r.isMatch( BUSINESS.name)})
-          .map[Business](b => Business.apply(b))
-          .saveToCassandra(CassandraHelper.keyspace, BUSINESS.name)
+      rdd.filter(r => {
+        r.isMatch(CHECKIN.name)
       })
+        .flatMap[Checkin](r => Checkin.apply(r))
+        .saveToCassandra(CassandraHelper.keyspace, CHECKIN.name)
+
+      rdd.filter(r => {
+        r.isMatch(BUSINESS.name)
+      })
+        .map[Business](b => Business.apply(b))
+        .saveToCassandra(CassandraHelper.keyspace, BUSINESS.name)
+    })
 
     dataSocketSender.start()
     ssc.start()

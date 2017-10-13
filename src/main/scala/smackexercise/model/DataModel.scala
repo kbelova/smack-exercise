@@ -7,31 +7,40 @@ import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods
 
 import scala.collection.mutable
-
 import smackexercise.utils.Transformer
+
+import scala.collection.mutable.ArrayBuffer
 
   case class Checkin(checkin_id: String, business_id: String, day: String, hour: String, amount: BigInt) extends Product
   object Checkin {
     def apply(record: Record): mutable.ArrayBuffer[Checkin] = {
-      implicit val formats = DefaultFormats
-      val json = JsonMethods.parse(record.json).extract[Map[String, Any]]
-      val businessId = json("business_id"). asInstanceOf[String]
+      extract(record.json)
+    }
+
+    def extract(jsonStr: String): ArrayBuffer[Checkin] = {
+      implicit val formats: DefaultFormats.type = DefaultFormats
+      val json = JsonMethods.parse(jsonStr).extract[Map[String, Any]]
+      val businessId = json("business_id").asInstanceOf[String]
       val days = json("time").asInstanceOf[Map[String, Map[String, BigInt]]]
       val lst = new mutable.ArrayBuffer[Checkin]()
-      for ((day:String, hours: Map[String, BigInt] ) <- days) {
-        for((hour: String, amount: BigInt) <- hours) {
-          lst += new Checkin(randomUUID().toString , businessId, day, hour, amount)
+      for ((day: String, hours: Map[String, BigInt]) <- days) {
+        for ((hour: String, amount: BigInt) <- hours) {
+          lst += new Checkin(randomUUID().toString, businessId, day, hour, amount)
         }
       }
       lst
     }
   }
 
-  case class Review(review_id: String, user_id: String, business_id: String, stars: BigInt, `date`: String, `text`: String, useful: BigInt, funny: BigInt, cool: BigInt) extends Product
+  case class Review(review_id: String, user_id: String, business_id: String, stars: Option[BigInt], `date`: String, `text`: String, useful: BigInt, funny: BigInt, cool: BigInt) extends Product
   object Review {
     def apply(record: Record): Review = {
+      extract(record.json)
+    }
+
+    def extract(jsonStr: String): Review = {
       implicit val formats = DefaultFormats
-      val json = JsonMethods.parse(record.json)
+      val json = JsonMethods.parse(jsonStr)
       json.extract[Review]
     }
   }
@@ -39,12 +48,22 @@ import smackexercise.utils.Transformer
   case class SmallTip(`text`: Option[String], `date`: Option[String], likes: Option[BigInt], business_id: String, user_id: String) extends Product
   case class Tip(tip_id: String,`text`: String, `date`: String, likes: BigInt, business_id: String, user_id: String) extends Product
   object Tip {
-    def apply(smTip: SmallTip): Tip = Tip(randomUUID().toString, smTip.`text`.getOrElse("None"), smTip.`date`.getOrElse("1111-11-11"), smTip.likes.getOrElse(-1), smTip.business_id, smTip.user_id)
+    def apply(smTip: SmallTip): Tip = Tip(
+      tip_id = randomUUID().toString,
+      `text` = smTip.`text`.getOrElse("None"),
+      `date` = smTip.`date`.getOrElse("1111-11-11"),
+      likes = smTip.likes.getOrElse(-1),
+      business_id = smTip.business_id,
+      user_id = smTip.user_id)
     def apply(record: Record): Tip = {
-      implicit val formats = DefaultFormats
-      val json = JsonMethods.parse(record.json)
-      val tip = json.extract[SmallTip]
+      val tip: SmallTip = extract(record.json)
       Tip.apply(tip)
+    }
+
+    def extract(jsonStr: String): SmallTip = {
+      implicit val formats = DefaultFormats
+      val json = JsonMethods.parse(jsonStr)
+      json.extract[SmallTip]
     }
   }
 
@@ -60,12 +79,13 @@ import smackexercise.utils.Transformer
       val smallUser = JsonMethods.parse(record.json).extract[SmallUser]
       val sf = JsonMethods.parse(record.json).extract[Friends]
       val se = JsonMethods.parse(record.json).extract[Elite]
-      User(smallUser, sf.friends.mkString(" "), se.elite.mkString(" "))
+      User(smallUser, sf.friends.mkString(","), se.elite.mkString(","))
     }
     def apply(sm: SmallUser, friends: String, elite: String): User = {
       User(sm.user_id, sm.name.getOrElse("None"), sm.review_count.getOrElse(-1), sm.yelping_since.getOrElse("None"), friends, sm.useful.getOrElse(-1), sm.funny.getOrElse(-1), sm.cool.getOrElse(-1), sm.fans.getOrElse(-1), elite, sm.average_stars.getOrElse(Double.NaN), sm.compliment_hot.getOrElse(-1), sm.compliment_more.getOrElse(-1), sm.compliment_profile.getOrElse(-1), sm.compliment_cute.getOrElse(-1),sm.compliment_list.getOrElse(-1), sm.compliment_note.getOrElse(-1), sm.compliment_plain.getOrElse(-1), sm.compliment_cool.getOrElse(-1), sm.compliment_funny.getOrElse(-1), sm.compliment_writer.getOrElse(-1), sm.compliment_photos.getOrElse(-1))
     }
   }
+
   case class TinyBusiness(business_id: String, name: String, neighborhood: Option[String], address: Option[String], city: Option[String], state: Option[String], postal_code: Option[String], latitude: Option[Double], longitude: Option[Double], stars: Option[Double], review_count: Option[BigInt], is_open: Option[BigInt]) extends Product
   case class ComplMap(attributes: Map[String, Any], hours: Map[String, Any], categories: List[String]) {
     def getFullMap: Map[String, Any] = {
@@ -88,31 +108,46 @@ import smackexercise.utils.Transformer
                        friday: String, saturday: String, sunday: String
                      ) extends Product {
     def this(tb: TinyBusiness, m: Map[String, Any]) =
-      this(tb.business_id, tb.name, tb.neighborhood.getOrElse("None"), tb.address.getOrElse("None"), tb.city.getOrElse("None"), tb.state.getOrElse("None"),
-        tb.postal_code.getOrElse("None"), tb.latitude.getOrElse(Double.NaN), tb.longitude.getOrElse(Double.NaN), tb.stars.getOrElse(Double.NaN), tb.review_count.getOrElse(-1), tb.is_open.getOrElse(-1),
-        m.getOrElse("businessacceptscreditcards", null).asInstanceOf[Boolean],
-        m.getOrElse("restaurantspricerange2", null).asInstanceOf[BigInt],
-        m.getOrElse("wifi", "").asInstanceOf[String],
-        m.getOrElse("`businessparking_garage`", null).asInstanceOf[Boolean],
-        m.getOrElse("`businessparking_street`", null).asInstanceOf[Boolean],
-        m.getOrElse("`businessparking_validated`", null).asInstanceOf[Boolean],
-        m.getOrElse("`businessparking_lot`", null).asInstanceOf[Boolean],
-        m.getOrElse("`businessparking_valet`", null).asInstanceOf[Boolean],
-        m.getOrElse("bikeparking", null).asInstanceOf[Boolean],
-        m.getOrElse("monday", "").asInstanceOf[String],
-        m.getOrElse("tuesday", "").asInstanceOf[String],
-        m.getOrElse("wednesday", "").asInstanceOf[String],
-        m.getOrElse("thursday", "").asInstanceOf[String],
-        m.getOrElse("friday", "").asInstanceOf[String],
-        m.getOrElse("saturday", "").asInstanceOf[String],
-        m.getOrElse("sunday", "").asInstanceOf[String],
-        m.getOrElse("categories", "").asInstanceOf[String])
+      this(
+        business_id = tb.business_id,
+        name = tb.name,
+        neighborhood = tb.neighborhood.getOrElse("None"),
+        address = tb.address.getOrElse("None"),
+        city = tb.city.getOrElse("None"),
+        state = tb.state.getOrElse("None"),
+        postal_code = tb.postal_code.getOrElse("None"),
+        latitude = tb.latitude.getOrElse(Double.NaN),
+        longitude = tb.longitude.getOrElse(Double.NaN),
+        stars = tb.stars.getOrElse(Double.NaN),
+        review_count = tb.review_count.getOrElse(-1),
+        is_open = tb.is_open.getOrElse(-1),
+        businessacceptscreditcards = m.getOrElse("businessacceptscreditcards", null).asInstanceOf[Boolean],
+        restaurantspricerange2 = m.getOrElse("restaurantspricerange2", null).asInstanceOf[BigInt],
+        wifi = m.getOrElse("wifi", "").asInstanceOf[String],
+        `businessparking_garage` = m.getOrElse("`businessparking_garage`", null).asInstanceOf[Boolean],
+        `businessparking_street` = m.getOrElse("`businessparking_street`", null).asInstanceOf[Boolean],
+        `businessparking_validated` = m.getOrElse("`businessparking_validated`", null).asInstanceOf[Boolean],
+        `businessparking_lot` = m.getOrElse("`businessparking_lot`", null).asInstanceOf[Boolean],
+        `businessparking_valet` = m.getOrElse("`businessparking_valet`", null).asInstanceOf[Boolean],
+        bikeparking = m.getOrElse("bikeparking", null).asInstanceOf[Boolean],
+        monday = m.getOrElse("monday", "").asInstanceOf[String],
+        tuesday = m.getOrElse("tuesday", "").asInstanceOf[String],
+        wednesday = m.getOrElse("wednesday", "").asInstanceOf[String],
+        thursday = m.getOrElse("thursday", "").asInstanceOf[String],
+        friday = m.getOrElse("friday", "").asInstanceOf[String],
+        saturday = m.getOrElse("saturday", "").asInstanceOf[String],
+        sunday = m.getOrElse("sunday", "").asInstanceOf[String],
+        categories = m.getOrElse("categories", "").asInstanceOf[String])
   }
 
   object Business {
     def apply(record: Record): Business = {
-      implicit val formats = DefaultFormats
-      val json = JsonMethods.parse(record.json)
+      extract(record.json)
+    }
+
+    def extract(jsonStr: String): Business = {
+      implicit val formats: DefaultFormats.type = DefaultFormats
+      val json = JsonMethods.parse(jsonStr)
       val sm = json.extract[TinyBusiness]
       val cs = json.extract[ComplMap]
       new Business(sm, cs.getFullMap)
@@ -120,11 +155,17 @@ import smackexercise.utils.Transformer
   }
 
 
-  case class Photos(business_id: String, photo_id: String,  caption: String, label: String) extends Product
+  case class Photos(business_id: String, photo_id: String,  caption: Option[String], label: Option[String]) extends Product
   object Photos {
     def apply(record: Record): Photos = {
+      if (record.json == null || record.json.isEmpty) println("PHOTOS: json is empty or null")
+      extract(record.json)
+    }
+
+    //for test purpose can't be private
+    def extract(jsonStr: String): Photos = {
       implicit val formats: DefaultFormats.type = DefaultFormats
-      val json = JsonMethods.parse(record.json)
+      val json = JsonMethods.parse(jsonStr)
       json.extract[Photos]
     }
   }
